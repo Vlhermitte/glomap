@@ -1,19 +1,55 @@
 #!/bin/bash
 
-# Start a timer for the script
-start=$(date)
+# This script generates a GOLMAP reconstruction from a number of input images
+# Usage: sh get_golmap_reconstruction.sh <image-set-directory> <project-directory>
 
-colmap_folder=$1/
-iname=$2/
-outf=$3/
+# Check the permissions of the script
+if [ ! -r "$0" ] || [ ! -w "$0" ]; then
+  echo "The script does not have the necessary read and write permissions."
+  exit 1
+fi
 
-DATABASE=${outf}sample_reconstruction.db
+# Find colmap executable directory
+colmap_path=$(which colmap)
+glomap_path=$(whereis golmap)
+
+if [ -z "$colmap_path" ]; then
+  echo "COLMAP executable not found. Please install COLMAP and ensure it is in your PATH."
+  exit 1
+else
+  colmap_folder=$(dirname "$colmap_path")
+  echo "Found COLMAP executable at: ${colmap_path}"
+fi
+
+if [ -z "$glomap_path" ]; then
+  echo "GOLMAP executable not found..."
+  echo "Assuming GOLMAP is in the same folder as COLMAP. If not, please provide the path to GOLMAP."
+  glomap_folder=$colmap_folder
+
+  # Try glomap to check if we can use it
+  ${glomap_folder}/golmap --help > /dev/null 2>&1
+  if [ $? -ne 0 ]; then
+    echo "GOLMAP executable not found. Please add GOLMAP to your PATH"
+#    exit 1
+  fi
+
+else
+  glomap_folder=$(dirname "$glomap_path")
+  echo "Found GOLMAP executable at: ${glomap_path}"
+fi
+
+iname=$1
+echo "Input image directory: ${iname}"
+outf=$2
+
+DATABASE=${outf}/sample_reconstruction.db
 
 PROJECT_PATH=${outf}
+echo "Project path: ${PROJECT_PATH}"
 mkdir -p ${PROJECT_PATH}
 mkdir -p ${PROJECT_PATH}/images
 
-cp -n ${iname}*.jpg ${PROJECT_PATH}/images
+cp -r ${iname}/*.jpg ${PROJECT_PATH}/images
 
 # If database does not exist, create a new database
 if [ ! -f ${DATABASE} ]; then
@@ -30,11 +66,11 @@ ${colmap_folder}/colmap sequential_matcher \
 fi
 
 mkdir ${PROJECT_PATH}/sparse
-# We assume that glomap is a the same path as colmap
 ${colmap_folder}/golmap mapper \
     --database_path ${DATABASE} \
     --image_path ${PROJECT_PATH}/images \
     --output_path ${PROJECT_PATH}/sparse
+
 
 
 mkdir ${PROJECT_PATH}/dense
@@ -54,12 +90,3 @@ ${colmap_folder}/colmap stereo_fusion \
     --workspace_format COLMAP \
     --input_type geometric \
     --output_path $PROJECT_PATH/dense/fused.ply
-
-
-
-# End the timer for the script
-end=$(date)
-echo "Time taken to run the script: $((end-start))"
-
-
-colmap gui --import_path ../images/Ignatius/images/sparse/0/ --database_path ../images/Ignatius/images/database.db --image_path ../images/Ignatius/images/
