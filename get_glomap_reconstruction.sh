@@ -66,7 +66,7 @@ ${colmap_folder}/colmap sequential_matcher \
 fi
 
 mkdir ${PROJECT_PATH}/sparse
-${colmap_folder}/golmap mapper \
+${colmap_folder}/glomap mapper \
     --database_path ${DATABASE} \
     --image_path ${PROJECT_PATH}/images \
     --output_path ${PROJECT_PATH}/sparse
